@@ -1,0 +1,26 @@
+{
+  "name": "高校受験 国語 RPG",
+  "short_name": "受験国語RPG",
+  "description": "偏差値バトルで国語力を鍛える、高校受験勉強ミニゲーム。",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#1e1b4b",
+  "theme_color": "#1e1b4b",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "/pwa-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
