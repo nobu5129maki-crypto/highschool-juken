@@ -1,21 +1,25 @@
-/* Minimal offline shell — enables PWA install (Chrome) + basic revisit caching */
-const CACHE = 'juken-rpg-v1';
+/* Minimal offline shell — base path は sw の置き場所から自動算出（GitHub Pages 対応） */
+const CACHE = 'juken-rpg-v3';
+
+/** /highschool-juken/sw.js → /highschool-juken/ */
+const BASE =
+  self.location.pathname.replace(/[^/]+\.js$/, '') || '/';
 
 self.addEventListener('install', (event) => {
+  const origin = self.location.origin;
+  const urls = [
+    origin + BASE,
+    origin + BASE + 'index.html',
+    origin + BASE + 'manifest.webmanifest',
+    origin + BASE + 'favicon.png',
+    origin + BASE + 'pwa-192.png',
+    origin + BASE + 'pwa-512.png',
+    origin + BASE + 'apple-touch-icon.png',
+  ];
   event.waitUntil(
     caches
       .open(CACHE)
-      .then((cache) =>
-        cache.addAll([
-          '/',
-          '/index.html',
-          '/manifest.webmanifest',
-          '/favicon.png',
-          '/pwa-192.png',
-          '/pwa-512.png',
-          '/apple-touch-icon.png',
-        ]),
-      )
+      .then((cache) => cache.addAll(urls))
       .then(() => self.skipWaiting()),
   );
 });
@@ -31,7 +35,7 @@ self.addEventListener('fetch', (event) => {
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request).catch(async () => {
-        const c = await caches.match('/index.html');
+        const c = await caches.match(originIndex());
         return c || Response.error();
       }),
     );
@@ -51,3 +55,7 @@ self.addEventListener('fetch', (event) => {
     }),
   );
 });
+
+function originIndex() {
+  return self.location.origin + BASE + 'index.html';
+}
