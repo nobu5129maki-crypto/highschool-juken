@@ -1,5 +1,5 @@
 /* Minimal offline shell — base path は sw の置き場所から自動算出（GitHub Pages 対応） */
-const CACHE = 'juken-rpg-v2';
+const CACHE = 'juken-rpg-v3';
 
 /** /highschool-juken/sw.js → /highschool-juken/ */
 const BASE =
