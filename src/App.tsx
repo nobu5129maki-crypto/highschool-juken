@@ -1,9 +1,19 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { HensachiLevel, Question, QuestionCategoryId, PlayerGender } from './types';
 import { CATEGORY_LIST, pickRandomBattleQuestions } from './data/questionBank';
 import { useGameAudio } from './audio/useGameAudio';
 import { EnemySpriteByLevel, PlayerHero } from './components/CharacterSprites';
 import { loadPlayerGender, savePlayerGender } from './playerPrefs';
+import {
+  ACHIEVEMENT_LIST,
+  getClearedCount,
+  getDailyPick,
+  getStudyRankLabel,
+  isStageCleared,
+  loadProgress,
+  recordBattleEnd,
+  type AchievementDef,
+} from './gameProgress';
 import './App.css';
 
 type Phase = 'title' | 'category' | 'stage' | 'battle' | 'result';
@@ -41,6 +51,11 @@ const DAMAGE_TO_ENEMY = 28;
 const DAMAGE_TO_PLAYER = 24;
 /** 1回でも不正解のあと、次に正解したときのHP回復量 */
 const HEAL_COMEBACK = 12;
+/** 連続正解に応じた追加ダメージ（小さめの上限でバランス維持） */
+function bonusDamageForStreak(streakAfterThisHit: number): number {
+  if (streakAfterThisHit < 2) return 0;
+  return Math.min(8, Math.max(0, streakAfterThisHit - 1) * 2);
+}
 
 function App() {
   const [phase, setPhase] = useState<Phase>('title');
@@ -58,6 +73,15 @@ function App() {
   const [playerGender, setPlayerGender] = useState<PlayerGender>(loadPlayerGender);
   const comebackHealEligibleRef = useRef(false);
   const [recoveryHint, setRecoveryHint] = useState<string | null>(null);
+  /** 現在のステージでの連続正解数（直前の問題まで） */
+  const [streakCorrect, setStreakCorrect] = useState(0);
+  const maxComboThisBattleRef = useRef(0);
+  const battleSessionIdRef = useRef(0);
+  const recordedBattleIdsRef = useRef(new Set<number>());
+  const [progressVersion, setProgressVersion] = useState(0);
+  const progress = useMemo(() => loadProgress(), [progressVersion]);
+  const [dailyPick] = useState(() => getDailyPick());
+  const [freshAchievements, setFreshAchievements] = useState<AchievementDef[]>([]);
 
   const { bgmMuted, ensureBgm, toggleBgm, playAnswerFeedback } = useGameAudio();
 
@@ -75,6 +99,7 @@ function App() {
 
   const startStage = useCallback((cat: QuestionCategoryId, lv: HensachiLevel) => {
     const qs = pickRandomBattleQuestions(cat, lv);
+    battleSessionIdRef.current += 1;
     setCategoryId(cat);
     setLevel(lv);
     setQueue(qs);
@@ -87,6 +112,9 @@ function App() {
     setResultKind(null);
     comebackHealEligibleRef.current = false;
     setRecoveryHint(null);
+    setStreakCorrect(0);
+    maxComboThisBattleRef.current = 0;
+    setFreshAchievements([]);
     setPhase('battle');
   }, []);
 
@@ -101,7 +129,26 @@ function App() {
     setResultKind(null);
     comebackHealEligibleRef.current = false;
     setRecoveryHint(null);
+    setStreakCorrect(0);
+    setFreshAchievements([]);
   }, []);
+
+  useEffect(() => {
+    if (phase !== 'result' || resultKind === null || !categoryId || !level) return;
+    const sid = battleSessionIdRef.current;
+    if (recordedBattleIdsRef.current.has(sid)) return;
+    recordedBattleIdsRef.current.add(sid);
+    const { newAchievements } = recordBattleEnd(
+      resultKind,
+      categoryId,
+      level,
+      maxComboThisBattleRef.current,
+    );
+    if (newAchievements.length) {
+      setFreshAchievements(newAchievements);
+    }
+    setProgressVersion((v) => v + 1);
+  }, [phase, resultKind, categoryId, level]);
 
   const advanceBattle = useCallback(
     (nextEnemy: number, nextPlayer: number, nextIndex: number, totalQuestions: number) => {
@@ -144,6 +191,11 @@ function App() {
     setAwaitExplainAck(false);
 
     if (wasCorrect) {
+      const newStreak = streakCorrect + 1;
+      maxComboThisBattleRef.current = Math.max(maxComboThisBattleRef.current, newStreak);
+      setStreakCorrect(newStreak);
+      const bonus = bonusDamageForStreak(newStreak);
+      const dmg = DAMAGE_TO_ENEMY + bonus;
       let heal = 0;
       if (comebackHealEligibleRef.current) {
         heal = Math.min(HEAL_COMEBACK, MAX_HP - playerHp);
@@ -152,19 +204,29 @@ function App() {
           setRecoveryHint(`リカバリー！ HP +${heal}`);
         }
       }
-      const nextEnemy = Math.max(0, enemyHp - DAMAGE_TO_ENEMY);
+      const nextEnemy = Math.max(0, enemyHp - dmg);
       const nextPlayer = Math.min(MAX_HP, playerHp + heal);
       const nextIndex = index + 1;
       advanceBattle(nextEnemy, nextPlayer, nextIndex, queue.length);
     } else {
       comebackHealEligibleRef.current = true;
+      setStreakCorrect(0);
       const nextEnemy = enemyHp;
       const nextPlayer = Math.max(0, playerHp - DAMAGE_TO_PLAYER);
       const nextIndex = index + 1;
       advanceBattle(nextEnemy, nextPlayer, nextIndex, queue.length);
     }
     setLocked(false);
-  }, [current, feedback, enemyHp, playerHp, index, queue.length, advanceBattle]);
+  }, [
+    current,
+    feedback,
+    enemyHp,
+    playerHp,
+    index,
+    queue.length,
+    advanceBattle,
+    streakCorrect,
+  ]);
 
   return (
     <div className="app">
@@ -193,6 +255,41 @@ function App() {
 
       {phase === 'title' && (
         <section className="panel title-panel">
+          <div className="meta-strip" aria-label="冒険の記録">
+            <div className="meta-strip-row">
+              <span className="meta-rank">{getStudyRankLabel(progress)}</span>
+            </div>
+            <p className="meta-strip-stats">
+              累計勝利 <strong>{progress.totalWins}</strong> 　ステージ制覇{' '}
+              <strong>{getClearedCount(progress)}</strong> / 20
+            </p>
+            {progress.unlockedAchievements.length > 0 && (
+              <ul className="achievement-chips" aria-label="獲得した勲章">
+                {progress.unlockedAchievements.map((id) => {
+                  const d = ACHIEVEMENT_LIST.find((a) => a.id === id);
+                  return d ? (
+                    <li key={id} className="achievement-chip" title={d.description}>
+                      {d.title}
+                    </li>
+                  ) : null;
+                })}
+              </ul>
+            )}
+          </div>
+          <div className="daily-pick">
+            <p className="daily-pick-label">今日の一手</p>
+            <p className="daily-pick-text">{dailyPick.label}</p>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => {
+                void ensureBgm();
+                startStage(dailyPick.categoryId, dailyPick.level);
+              }}
+            >
+              このステージですぐ挑戦
+            </button>
+          </div>
           <fieldset className="gender-pick">
             <legend className="gender-pick-legend">主人公の見た目</legend>
             <p className="gender-pick-hint">男子・女子から選べます（あとからタイトルで変更可）</p>
@@ -281,6 +378,11 @@ function App() {
                 <span className="stage-label">{s.label}</span>
                 <span className="stage-enemy">{s.enemy}</span>
                 <span className="stage-blurb">{s.blurb}</span>
+                {isStageCleared(categoryId, s.value, progress) && (
+                  <span className="stage-cleared-badge" title="すでに一度クリアしたステージ">
+                    制覇済
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -337,6 +439,12 @@ function App() {
             {categoryMeta.emoji} {categoryMeta.title} · {meta.label} · {current.pastExamStyle}
           </p>
 
+          {streakCorrect >= 2 && (
+            <p className="combo-pill" role="status">
+              連続正解 ×{streakCorrect} · つぎの正解でコンボボーナス！
+            </p>
+          )}
+
           <article className="question-card">
             {current.passage && (
               <blockquote className="passage">{current.passage}</blockquote>
@@ -361,8 +469,15 @@ function App() {
           {feedback && (
             <p className={`feedback ${feedback}`} role="status">
               {feedback === 'correct'
-                ? `せいかい！ モンスターに ${DAMAGE_TO_ENEMY} のダメージ！`
-                : `ざんねん… あなたは ${DAMAGE_TO_PLAYER} のダメージを受けた`}
+                ? (() => {
+                    const s = streakCorrect + 1;
+                    const b = bonusDamageForStreak(s);
+                    const total = DAMAGE_TO_ENEMY + b;
+                    return b > 0
+                      ? `せいかい！ 連続${s}コンボ！ 合計 ${total} のダメージ（うち追加 +${b}）！`
+                      : `せいかい！ モンスターに ${total} のダメージ！`;
+                  })()
+                : `ざんねん… あなたは ${DAMAGE_TO_PLAYER} のダメージを受けた（連続リセット）`}
             </p>
           )}
 
@@ -419,6 +534,19 @@ function App() {
             {resultKind === 'lose' && 'リタイア…'}
             {resultKind === 'draw' && 'もう少し！'}
           </h2>
+          {freshAchievements.length > 0 && (
+            <div className="result-achievements" role="status">
+              <p className="result-achievements-title">勲章を獲得！</p>
+              <ul className="result-achievement-list">
+                {freshAchievements.map((a) => (
+                  <li key={a.id}>
+                    <strong>{a.title}</strong>
+                    <span className="result-achievement-desc">{a.description}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {resultKind === 'win' && (
             <p className="result-cheer" role="status">
               すばらしい！　見事な国語力だ！
