@@ -83,7 +83,15 @@ function App() {
   const [dailyPick] = useState(() => getDailyPick());
   const [freshAchievements, setFreshAchievements] = useState<AchievementDef[]>([]);
 
-  const { bgmMuted, ensureBgm, toggleBgm, playAnswerFeedback } = useGameAudio();
+  const {
+    bgmMuted,
+    bgmVolume,
+    setBgmVolume,
+    playingLabel,
+    ensureBgm,
+    toggleBgm,
+    playAnswerFeedback,
+  } = useGameAudio(phase, resultKind);
 
   const selectGender = useCallback((g: PlayerGender) => {
     setPlayerGender(g);
@@ -97,26 +105,30 @@ function App() {
     [categoryId],
   );
 
-  const startStage = useCallback((cat: QuestionCategoryId, lv: HensachiLevel) => {
-    const qs = pickRandomBattleQuestions(cat, lv);
-    battleSessionIdRef.current += 1;
-    setCategoryId(cat);
-    setLevel(lv);
-    setQueue(qs);
-    setIndex(0);
-    setPlayerHp(MAX_HP);
-    setEnemyHp(MAX_HP);
-    setFeedback(null);
-    setAwaitExplainAck(false);
-    setLocked(false);
-    setResultKind(null);
-    comebackHealEligibleRef.current = false;
-    setRecoveryHint(null);
-    setStreakCorrect(0);
-    maxComboThisBattleRef.current = 0;
-    setFreshAchievements([]);
-    setPhase('battle');
-  }, []);
+  const startStage = useCallback(
+    (cat: QuestionCategoryId, lv: HensachiLevel) => {
+      void ensureBgm('battle');
+      const qs = pickRandomBattleQuestions(cat, lv);
+      battleSessionIdRef.current += 1;
+      setCategoryId(cat);
+      setLevel(lv);
+      setQueue(qs);
+      setIndex(0);
+      setPlayerHp(MAX_HP);
+      setEnemyHp(MAX_HP);
+      setFeedback(null);
+      setAwaitExplainAck(false);
+      setLocked(false);
+      setResultKind(null);
+      comebackHealEligibleRef.current = false;
+      setRecoveryHint(null);
+      setStreakCorrect(0);
+      maxComboThisBattleRef.current = 0;
+      setFreshAchievements([]);
+      setPhase('battle');
+    },
+    [ensureBgm],
+  );
 
   const goTitle = useCallback(() => {
     setPhase('title');
@@ -231,18 +243,37 @@ function App() {
   return (
     <div className="app">
       <div className="audio-dock">
-        <button
-          type="button"
-          className="audio-btn"
-          onClick={() => void toggleBgm()}
-          aria-pressed={!bgmMuted}
-          title={bgmMuted ? 'BGMをオン' : 'BGMをオフ'}
-        >
-          <span className="audio-btn-icon" aria-hidden>
-            {bgmMuted ? '🔇' : '🎵'}
-          </span>
-          <span className="audio-btn-label">{bgmMuted ? 'BGMオフ' : 'BGMオン'}</span>
-        </button>
+        <div className="audio-dock-inner">
+          <button
+            type="button"
+            className="audio-btn"
+            onClick={() => void toggleBgm()}
+            aria-pressed={!bgmMuted}
+            title={bgmMuted ? 'BGMをオン' : 'BGMをオフ'}
+          >
+            <span className="audio-btn-icon" aria-hidden>
+              {bgmMuted ? '🔇' : '🎵'}
+            </span>
+            <span className="audio-btn-label">{bgmMuted ? 'BGMオフ' : 'BGMオン'}</span>
+          </button>
+          <label className="audio-volume">
+            <span className="audio-volume-label">音量</span>
+            <input
+              type="range"
+              className="audio-volume-slider"
+              min={0}
+              max={100}
+              value={Math.round(bgmVolume * 100)}
+              onChange={(e) => setBgmVolume(Number(e.target.value) / 100)}
+              aria-label="BGMの音量"
+            />
+          </label>
+          {playingLabel && (
+            <p className="audio-track-name" title="現在のBGM">
+              {playingLabel}
+            </p>
+          )}
+        </div>
       </div>
 
       <header className="hero">
@@ -283,7 +314,6 @@ function App() {
               type="button"
               className="btn"
               onClick={() => {
-                void ensureBgm();
                 startStage(dailyPick.categoryId, dailyPick.level);
               }}
             >
@@ -322,7 +352,7 @@ function App() {
             type="button"
             className="btn primary"
             onClick={() => {
-              void ensureBgm();
+              void ensureBgm('field');
               setPhase('category');
             }}
           >
