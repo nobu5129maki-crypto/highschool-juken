@@ -27,13 +27,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: |
-          if [ -f package-lock.json ]; then
-            npm ci
-          else
-            echo "::warning::package-lock.json がありません。npm install で続行します。"
-            npm install
-          fi
+        run: npm install --no-audit --no-fund
 
       - name: TypeScript check (tsc)
         run: npx tsc -b
