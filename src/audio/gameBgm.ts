@@ -14,7 +14,7 @@ export class GameBgmController {
   private master: GainNode | null = null;
   private active: ActiveBgm | null = null;
   private trackId: BgmTrackId | null = null;
-  private volume = 0.55;
+  private volume = 0.72;
   private muted = false;
   private started = false;
 

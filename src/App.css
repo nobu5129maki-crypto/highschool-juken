@@ -1,15 +1,17 @@
 .app {
   position: relative;
   text-align: left;
-  padding: 1.25rem 1rem 2.5rem;
+  /* 右下固定の BGM ドックと本文が重ならないよう余白 */
+  padding: 1.25rem 1rem max(2.5rem, 5.25rem);
   max-width: 42rem;
   margin: 0 auto;
 }
 
 .audio-dock {
   position: fixed;
-  top: 0.75rem;
-  right: 0.75rem;
+  bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+  right: max(0.75rem, env(safe-area-inset-right, 0px));
+  top: auto;
   z-index: 50;
   max-width: min(16rem, calc(100vw - 1.5rem));
 }

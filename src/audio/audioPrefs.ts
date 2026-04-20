@@ -1,7 +1,7 @@
 const MUTE_KEY = 'highschool-juken-bgm-muted';
 const VOLUME_KEY = 'highschool-juken-bgm-volume';
 
-const DEFAULT_VOLUME = 0.55;
+const DEFAULT_VOLUME = 0.72;
 
 export function readBgmMuted(): boolean {
   try {

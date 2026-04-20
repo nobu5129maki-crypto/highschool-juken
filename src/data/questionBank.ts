@@ -5,6 +5,7 @@ import { grammarByHensachi } from './grammarQuestions';
 import { readingByHensachi } from './readingQuestions';
 import { classicsByHensachi } from './classicsQuestions';
 import { EXTRA_QUESTIONS } from './extraQuestionBank';
+import { bulkExamByHensachi } from './bulkExamQuestions';
 
 function mergeLevelPools(
   base: Record<HensachiLevel, Question[]>,
@@ -22,11 +23,23 @@ export const QUESTION_BANK: Record<
   QuestionCategoryId,
   Record<HensachiLevel, Question[]>
 > = {
-  vocab_maze: mergeLevelPools(vocabMazeByHensachi, EXTRA_QUESTIONS.vocab_maze),
-  kanji: mergeLevelPools(kanjiByHensachi, EXTRA_QUESTIONS.kanji),
-  grammar: mergeLevelPools(grammarByHensachi, EXTRA_QUESTIONS.grammar),
-  reading: mergeLevelPools(readingByHensachi, EXTRA_QUESTIONS.reading),
-  classics: mergeLevelPools(classicsByHensachi, EXTRA_QUESTIONS.classics),
+  vocab_maze: mergeLevelPools(
+    mergeLevelPools(vocabMazeByHensachi, EXTRA_QUESTIONS.vocab_maze),
+    bulkExamByHensachi.vocab_maze,
+  ),
+  kanji: mergeLevelPools(mergeLevelPools(kanjiByHensachi, EXTRA_QUESTIONS.kanji), bulkExamByHensachi.kanji),
+  grammar: mergeLevelPools(
+    mergeLevelPools(grammarByHensachi, EXTRA_QUESTIONS.grammar),
+    bulkExamByHensachi.grammar,
+  ),
+  reading: mergeLevelPools(
+    mergeLevelPools(readingByHensachi, EXTRA_QUESTIONS.reading),
+    bulkExamByHensachi.reading,
+  ),
+  classics: mergeLevelPools(
+    mergeLevelPools(classicsByHensachi, EXTRA_QUESTIONS.classics),
+    bulkExamByHensachi.classics,
+  ),
 };
 
 /** 1 ステージで出題する問数（プールからランダム抽出。最大でもこの数まで） */

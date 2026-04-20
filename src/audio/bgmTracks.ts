@@ -19,10 +19,10 @@ export const BGM_TRACK_LABELS: Record<BgmTrackId, string> = {
 
 /** 各トラックのベースレベル（マスター gain に掛ける前の目安） */
 export const BGM_TRACK_LEVEL: Record<BgmTrackId, number> = {
-  study: 0.14,
-  field: 0.12,
-  battle: 0.11,
-  triumph: 0.13,
+  study: 0.24,
+  field: 0.2,
+  battle: 0.18,
+  triumph: 0.22,
 };
 
 export interface ActiveBgm {
