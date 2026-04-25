@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { HensachiLevel, Question, QuestionCategoryId, PlayerGender } from './types';
 import { CATEGORY_LIST, pickRandomBattleQuestions } from './data/questionBank';
-import { useGameAudio } from './audio/useGameAudio';
+import { useAnswerFeedback } from './audio/useAnswerFeedback';
 import { EnemySpriteByLevel, PlayerHero } from './components/CharacterSprites';
 import { loadPlayerGender, savePlayerGender } from './playerPrefs';
 import {
@@ -14,10 +14,30 @@ import {
   recordBattleEnd,
   type AchievementDef,
 } from './gameProgress';
+import { wrongExplainFallback } from './wrongExplainFallback';
 import './App.css';
 
 type Phase = 'title' | 'category' | 'stage' | 'battle' | 'result';
 type ResultKind = 'win' | 'lose' | 'draw';
+
+function ExplainParagraphs({ text, className }: { text: string; className: string }) {
+  const parts = text.trim().split(/\n\n+/);
+  if (parts.length === 0) {
+    return null;
+  }
+  if (parts.length === 1) {
+    return <p className={className}>{parts[0]}</p>;
+  }
+  return (
+    <div className="lesson-explain-paragraphs">
+      {parts.map((para, i) => (
+        <p key={i} className={className}>
+          {para}
+        </p>
+      ))}
+    </div>
+  );
+}
 
 const LEVELS: { value: HensachiLevel; label: string; enemy: string; blurb: string }[] = [
   {
@@ -75,6 +95,8 @@ function App() {
   const [recoveryHint, setRecoveryHint] = useState<string | null>(null);
   /** 現在のステージでの連続正解数（直前の問題まで） */
   const [streakCorrect, setStreakCorrect] = useState(0);
+  /** 直前に選んだ肢（不正解時の学び用） */
+  const [lastChoiceIndex, setLastChoiceIndex] = useState<number | null>(null);
   const maxComboThisBattleRef = useRef(0);
   const battleSessionIdRef = useRef(0);
   const recordedBattleIdsRef = useRef(new Set<number>());
@@ -83,15 +105,7 @@ function App() {
   const [dailyPick] = useState(() => getDailyPick());
   const [freshAchievements, setFreshAchievements] = useState<AchievementDef[]>([]);
 
-  const {
-    bgmMuted,
-    bgmVolume,
-    setBgmVolume,
-    playingLabel,
-    ensureBgm,
-    toggleBgm,
-    playAnswerFeedback,
-  } = useGameAudio(phase, resultKind);
+  const playAnswerFeedback = useAnswerFeedback();
 
   const selectGender = useCallback((g: PlayerGender) => {
     setPlayerGender(g);
@@ -107,7 +121,6 @@ function App() {
 
   const startStage = useCallback(
     (cat: QuestionCategoryId, lv: HensachiLevel) => {
-      void ensureBgm('battle');
       const qs = pickRandomBattleQuestions(cat, lv);
       battleSessionIdRef.current += 1;
       setCategoryId(cat);
@@ -123,11 +136,12 @@ function App() {
       comebackHealEligibleRef.current = false;
       setRecoveryHint(null);
       setStreakCorrect(0);
+      setLastChoiceIndex(null);
       maxComboThisBattleRef.current = 0;
       setFreshAchievements([]);
       setPhase('battle');
     },
-    [ensureBgm],
+    [],
   );
 
   const goTitle = useCallback(() => {
@@ -142,6 +156,7 @@ function App() {
     comebackHealEligibleRef.current = false;
     setRecoveryHint(null);
     setStreakCorrect(0);
+    setLastChoiceIndex(null);
     setFreshAchievements([]);
   }, []);
 
@@ -188,6 +203,7 @@ function App() {
       if (!current || locked) return;
       setRecoveryHint(null);
       setLocked(true);
+      setLastChoiceIndex(choice);
       const ok = choice === current.correctIndex;
       setFeedback(ok ? 'correct' : 'wrong');
       setAwaitExplainAck(true);
@@ -201,6 +217,7 @@ function App() {
     const wasCorrect = feedback === 'correct';
     setFeedback(null);
     setAwaitExplainAck(false);
+    setLastChoiceIndex(null);
 
     if (wasCorrect) {
       const newStreak = streakCorrect + 1;
@@ -242,40 +259,6 @@ function App() {
 
   return (
     <div className="app">
-      <div className="audio-dock">
-        <div className="audio-dock-inner">
-          <button
-            type="button"
-            className="audio-btn"
-            onClick={() => void toggleBgm()}
-            aria-pressed={!bgmMuted}
-            title={bgmMuted ? 'BGMをオン' : 'BGMをオフ'}
-          >
-            <span className="audio-btn-icon" aria-hidden>
-              {bgmMuted ? '🔇' : '🎵'}
-            </span>
-            <span className="audio-btn-label">{bgmMuted ? 'BGMオフ' : 'BGMオン'}</span>
-          </button>
-          <label className="audio-volume">
-            <span className="audio-volume-label">音量</span>
-            <input
-              type="range"
-              className="audio-volume-slider"
-              min={0}
-              max={100}
-              value={Math.round(bgmVolume * 100)}
-              onChange={(e) => setBgmVolume(Number(e.target.value) / 100)}
-              aria-label="BGMの音量"
-            />
-          </label>
-          {playingLabel && (
-            <p className="audio-track-name" title="現在のBGM">
-              {playingLabel}
-            </p>
-          )}
-        </div>
-      </div>
-
       <header className="hero">
         <p className="eyebrow">高校受験 国語</p>
         <h1>高校受験 国語 RPG</h1>
@@ -352,7 +335,6 @@ function App() {
             type="button"
             className="btn primary"
             onClick={() => {
-              void ensureBgm('field');
               setPhase('category');
             }}
           >
@@ -507,7 +489,7 @@ function App() {
                       ? `せいかい！ 連続${s}コンボ！ 合計 ${total} のダメージ（うち追加 +${b}）！`
                       : `せいかい！ モンスターに ${total} のダメージ！`;
                   })()
-                : `ざんねん… あなたは ${DAMAGE_TO_PLAYER} のダメージを受けた（連続リセット）`}
+                : `ざんねん… ${DAMAGE_TO_PLAYER} のダメージを受けました（連続はリセット）。下の解説をじっくり読めば、次の一歩につながります。`}
             </p>
           )}
 
@@ -515,10 +497,29 @@ function App() {
             <div
               className={`lesson-panel ${feedback === 'correct' ? 'lesson-panel--correct' : 'lesson-panel--wrong'}`}
               role="region"
-              aria-label="正解と解説"
+              aria-label={feedback === 'correct' ? '正解と解説' : '正解と解説（復習）'}
             >
+              {feedback === 'wrong' && (
+                <>
+                  <p className="lesson-wrong-preamble">
+                    答えが合わなくても大丈夫です。入試国語の多くの問題は「一度で当てる力」ではなく、外したあとに理由を言語化できれば、次は確実に伸びるタイプのものが多いです。まず正解欄の内容を手がかりに、下の説明を上から順に追ってみてください。
+                  </p>
+                  {lastChoiceIndex !== null &&
+                    lastChoiceIndex >= 0 &&
+                    lastChoiceIndex < 4 &&
+                    lastChoiceIndex !== current.correctIndex && (
+                      <p className="lesson-your-choice">
+                        今回選んだ答えは{' '}
+                        <span className="lesson-your-choice-key">
+                          {String.fromCharCode(65 + lastChoiceIndex)}. {current.choices[lastChoiceIndex]}
+                        </span>
+                        です。正解と比べながら、下を読んでみてください。
+                      </p>
+                    )}
+                </>
+              )}
               <p className="lesson-panel-kicker">
-                {feedback === 'correct' ? 'せいかい！' : '正解はこちら'}
+                {feedback === 'correct' ? 'せいかい！' : 'こたえあわせ'}
               </p>
               <p className="lesson-answer-line">
                 <span className="lesson-answer-key">
@@ -526,8 +527,23 @@ function App() {
                 </span>{' '}
                 {current.choices[current.correctIndex]}
               </p>
-              <p className="lesson-lead">やさしい解説</p>
-              <p className="lesson-explain">{current.explanation}</p>
+              <p className="lesson-lead">
+                {feedback === 'correct' ? 'やさしい解説' : '正解の考え方（まずここ）'}
+              </p>
+              {feedback === 'wrong' ? (
+                <ExplainParagraphs text={current.explanation} className="lesson-explain" />
+              ) : (
+                <p className="lesson-explain">{current.explanation}</p>
+              )}
+              {feedback === 'wrong' && (
+                <>
+                  <p className="lesson-lead lesson-lead--extra">じっくり・学びのコツ（手順と次の一歩）</p>
+                  <ExplainParagraphs
+                    text={current.explanationOnWrong ?? wrongExplainFallback(categoryId)}
+                    className="lesson-explain lesson-explain--supplement"
+                  />
+                </>
+              )}
               <button type="button" className="btn primary lesson-next" onClick={continueAfterExplain}>
                 つぎの問題へ
               </button>

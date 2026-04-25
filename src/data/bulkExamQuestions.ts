@@ -11,10 +11,15 @@ function q(
   correctIndex: 0 | 1 | 2 | 3,
   pastExamStyle: string,
   explanation: string,
-  passage?: string,
+  extra?: string | { passage?: string; explanationOnWrong?: string },
 ): Question {
   const o: Question = { id, prompt, choices, correctIndex, pastExamStyle, explanation };
-  if (passage) o.passage = passage;
+  if (typeof extra === 'string') {
+    o.passage = extra;
+  } else if (extra) {
+    if (extra.passage) o.passage = extra.passage;
+    if (extra.explanationOnWrong) o.explanationOnWrong = extra.explanationOnWrong;
+  }
   return o;
 }
 
@@ -31,6 +36,9 @@ function readingsVm(
       0,
       '語彙・読み',
       `「${row.w}」は「${row.y}」と読みます。`,
+      {
+        explanationOnWrong: `読み出しは、清濁・長音・行段の「一歩ちがい」にだまされやすい定番の課型です。合わなくても、正しい仮名の形を一つ学べた、と捉え直してください。まず正しい読み「${row.y}」を、声に出さず三回音読し、語「${row.w}」の画数と部首を教科書の索引で一度だけ確認するのがおすすめです。\n\nほかの三語は、正解と同じ行・同じ母音列に揃うよう作られた「似せてくる択一」が多いです。四語それぞれについて、差がつく一文字（清濁・小さい「っ」・二文字目の行）に印を付け、声に出さず差を聞き比べてから選び直してみてください。\n\n次の一歩：語「${row.w}」を含む短い例文を自分の言葉でつくり、紙の左に漢字・右に読み、という二段で一行だけ書き留めておくと、同じ形の出題に強くなります。`,
+      },
     ),
   );
 }
@@ -48,6 +56,9 @@ function readingsKj(
       0,
       '漢字・読み',
       `「${row.w}」は「${row.y}」と読みます。`,
+      {
+        explanationOnWrong: `漢字一語の読みは、画の寄せ方より先に、よく一緒に出る二語（熟語）のセットを思い出すと安定しがちです。合わないときは、正解「${row.y}」を心の中で戻る読みの順に一語ずつ言い、語「${row.w}」をそのまま抜き出してノート真ん中に書き、上に読み、下に一語の意味と短例を箇条書きしてみてください。\n\n他の択一は、音の上で「自信がない仮名」を二つ比べ、どちらが国語の授業・ニュースの語感に近いか、イメージで最終チェックするのが有効です。いきなり四択のラベルから答えにいかず、まず一語目の仮名を合わせる、という順序でも構いません。\n\n次の一歩：教科書の用語集で「${row.w}」の項を開き、例に挙がっている熟語を一つ、音読＋筆写で残してから寝る、と一週間に一度だけでも定着に効きます。`,
+      },
     ),
   );
 }

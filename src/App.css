@@ -1,117 +1,9 @@
 .app {
   position: relative;
   text-align: left;
-  /* 右下固定の BGM ドックと本文が重ならないよう余白 */
-  padding: 1.25rem 1rem max(2.5rem, 5.25rem);
+  padding: 1.25rem 1rem 2.5rem;
   max-width: 42rem;
   margin: 0 auto;
-}
-
-.audio-dock {
-  position: fixed;
-  bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
-  right: max(0.75rem, env(safe-area-inset-right, 0px));
-  top: auto;
-  z-index: 50;
-  max-width: min(16rem, calc(100vw - 1.5rem));
-}
-
-.audio-dock-inner {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.45rem;
-  padding: 0.5rem 0.65rem;
-  border-radius: 0.85rem;
-  border: 1px solid var(--border);
-  background: var(--social-bg);
-  backdrop-filter: blur(8px);
-  box-shadow: var(--shadow);
-}
-
-.audio-volume {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text-muted, var(--text-h));
-}
-
-.audio-volume-label {
-  flex-shrink: 0;
-  min-width: 2em;
-}
-
-.audio-volume-slider {
-  flex: 1;
-  min-width: 0;
-  height: 0.35rem;
-  accent-color: var(--accent, #5b7fd1);
-  cursor: pointer;
-}
-
-.audio-track-name {
-  margin: 0;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--accent);
-  line-height: 1.3;
-  text-align: center;
-  opacity: 0.95;
-}
-
-.audio-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.4rem 0.65rem;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--social-bg);
-  backdrop-filter: blur(8px);
-  color: var(--text-h);
-  font: inherit;
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: var(--shadow);
-  transition:
-    border-color 0.15s,
-    background 0.15s;
-}
-
-.audio-btn:hover {
-  border-color: var(--accent-border);
-  background: var(--accent-bg);
-}
-
-.audio-btn-icon {
-  font-size: 1rem;
-  line-height: 1;
-}
-
-.audio-btn-label {
-  white-space: nowrap;
-}
-
-@media (max-width: 480px) {
-  .audio-btn-label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-  }
-
-  .audio-btn {
-    padding: 0.5rem;
-    justify-content: center;
-  }
-
-  .audio-dock-inner {
-    padding: 0.45rem 0.5rem;
-  }
 }
 
 .hero {
@@ -941,6 +833,50 @@
   font-size: 0.92rem;
   line-height: 1.75;
   color: var(--text);
+}
+
+.lesson-wrong-preamble {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: var(--text);
+}
+
+.lesson-your-choice {
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--social-bg);
+  font-size: 0.88rem;
+  line-height: 1.65;
+  color: var(--text);
+}
+
+.lesson-your-choice-key {
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.lesson-lead--extra {
+  margin-top: 0.35rem;
+}
+
+.lesson-explain--supplement {
+  margin-bottom: 1rem;
+  padding-top: 0.1rem;
+}
+
+.lesson-explain-paragraphs {
+  margin: 0 0 1rem;
+}
+
+.lesson-explain-paragraphs .lesson-explain {
+  margin: 0 0 0.7rem;
+}
+
+.lesson-explain-paragraphs .lesson-explain:last-child {
+  margin-bottom: 0;
 }
 
 .lesson-next {

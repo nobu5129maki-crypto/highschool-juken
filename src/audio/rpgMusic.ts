@@ -1,8 +1,6 @@
 /**
  * 正誤フィードバック用の短い効果音（Web Audio API）
  */
-import { getSfxGainMultiplier } from './audioPrefs';
-
 const SFX_BASE = 0.11;
 
 export function playCorrectSfx(): void {
@@ -14,9 +12,6 @@ export function playWrongSfx(): void {
 }
 
 function playChime(freqs: number[], stepSec: number): void {
-  const mult = getSfxGainMultiplier();
-  if (mult <= 0) return;
-
   const Ctx =
     window.AudioContext ||
     (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -24,7 +19,7 @@ function playChime(freqs: number[], stepSec: number): void {
   const ctx = new Ctx();
   void ctx.resume();
   const master = ctx.createGain();
-  master.gain.value = SFX_BASE * mult;
+  master.gain.value = SFX_BASE;
   master.connect(ctx.destination);
 
   let t = ctx.currentTime;

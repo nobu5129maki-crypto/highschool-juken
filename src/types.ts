@@ -23,4 +23,8 @@ export type Question = {
   pastExamStyle: string;
   /** 正解・不正解のあとに表示する、やさしい解説（答えの理由・ポイント） */
   explanation: string;
+  /**
+   * 不正解のときだけ追加表示する、より丁寧な学び手の文（未設定時は科目別の定型を表示）
+   */
+  explanationOnWrong?: string;
 };
