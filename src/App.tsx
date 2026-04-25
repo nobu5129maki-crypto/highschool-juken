@@ -502,7 +502,7 @@ function App() {
               {feedback === 'wrong' && (
                 <>
                   <p className="lesson-wrong-preamble">
-                    答えが合わなくても大丈夫です。入試国語の多くの問題は「一度で当てる力」ではなく、外したあとに理由を言語化できれば、次は確実に伸びるタイプのものが多いです。まず正解欄の内容を手がかりに、下の説明を上から順に追ってみてください。
+                    合わなくても大丈夫です。下は「正解の理由」→「つぎに試すコツ」の順で読めるようにしてあります。上から、ゆっくりで構いません。
                   </p>
                   {lastChoiceIndex !== null &&
                     lastChoiceIndex >= 0 &&
@@ -528,7 +528,7 @@ function App() {
                 {current.choices[current.correctIndex]}
               </p>
               <p className="lesson-lead">
-                {feedback === 'correct' ? 'やさしい解説' : '正解の考え方（まずここ）'}
+                {feedback === 'correct' ? 'やさしい解説' : 'なぜこの答えになるか'}
               </p>
               {feedback === 'wrong' ? (
                 <ExplainParagraphs text={current.explanation} className="lesson-explain" />
@@ -537,7 +537,7 @@ function App() {
               )}
               {feedback === 'wrong' && (
                 <>
-                  <p className="lesson-lead lesson-lead--extra">じっくり・学びのコツ（手順と次の一歩）</p>
+                  <p className="lesson-lead lesson-lead--extra">つぎに試すコツ</p>
                   <ExplainParagraphs
                     text={current.explanationOnWrong ?? wrongExplainFallback(categoryId)}
                     className="lesson-explain lesson-explain--supplement"
