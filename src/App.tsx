@@ -66,7 +66,7 @@ const LEVELS: { value: HensachiLevel; label: string; enemy: string; blurb: strin
   },
 ];
 
-const MAX_HP = 100;
+const PLAYER_MAX_HP = 100;
 const DAMAGE_TO_ENEMY = 28;
 const DAMAGE_TO_PLAYER = 24;
 /** 1回でも不正解のあと、次に正解したときのHP回復量 */
@@ -77,14 +77,24 @@ function bonusDamageForStreak(streakAfterThisHit: number): number {
   return Math.min(8, Math.max(0, streakAfterThisHit - 1) * 2);
 }
 
+/**
+ * 敵の最大HP。偏差値が高いほど多くの正解が必要で、1ステージ内の問題に触れる量が増える。
+ * 想定: 1ヒット28〜36（コンボ含む）・最大14問のうち、おおむね数問〜多めで撃破可能な帯。
+ */
+function maxEnemyHpForHensachi(hensachi: HensachiLevel): number {
+  return 160 + (hensachi - 40) * 8;
+}
+
 function App() {
   const [phase, setPhase] = useState<Phase>('title');
   const [categoryId, setCategoryId] = useState<QuestionCategoryId | null>(null);
   const [level, setLevel] = useState<HensachiLevel | null>(null);
   const [queue, setQueue] = useState<Question[]>([]);
   const [index, setIndex] = useState(0);
-  const [playerHp, setPlayerHp] = useState(MAX_HP);
-  const [enemyHp, setEnemyHp] = useState(MAX_HP);
+  const [playerHp, setPlayerHp] = useState(PLAYER_MAX_HP);
+  const [enemyHp, setEnemyHp] = useState(
+    maxEnemyHpForHensachi(40),
+  );
   const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
   /** 正解・不正解のあと、解説を読むまで次に進まない */
   const [awaitExplainAck, setAwaitExplainAck] = useState(false);
@@ -118,6 +128,7 @@ function App() {
     () => CATEGORY_LIST.find((c) => c.id === categoryId),
     [categoryId],
   );
+  const battleEnemyMaxHp = level != null ? maxEnemyHpForHensachi(level) : 160;
 
   const startStage = useCallback(
     (cat: QuestionCategoryId, lv: HensachiLevel) => {
@@ -127,8 +138,8 @@ function App() {
       setLevel(lv);
       setQueue(qs);
       setIndex(0);
-      setPlayerHp(MAX_HP);
-      setEnemyHp(MAX_HP);
+      setPlayerHp(PLAYER_MAX_HP);
+      setEnemyHp(maxEnemyHpForHensachi(lv));
       setFeedback(null);
       setAwaitExplainAck(false);
       setLocked(false);
@@ -227,14 +238,14 @@ function App() {
       const dmg = DAMAGE_TO_ENEMY + bonus;
       let heal = 0;
       if (comebackHealEligibleRef.current) {
-        heal = Math.min(HEAL_COMEBACK, MAX_HP - playerHp);
+        heal = Math.min(HEAL_COMEBACK, PLAYER_MAX_HP - playerHp);
         comebackHealEligibleRef.current = false;
         if (heal > 0) {
           setRecoveryHint(`リカバリー！ HP +${heal}`);
         }
       }
       const nextEnemy = Math.max(0, enemyHp - dmg);
-      const nextPlayer = Math.min(MAX_HP, playerHp + heal);
+      const nextPlayer = Math.min(PLAYER_MAX_HP, playerHp + heal);
       const nextIndex = index + 1;
       advanceBattle(nextEnemy, nextPlayer, nextIndex, queue.length);
     } else {
@@ -421,7 +432,7 @@ function App() {
               <p>
                 受験戦士（{playerGender === 'female' ? '女子' : '男子'}）
               </p>
-              <HpBar value={playerHp} max={MAX_HP} variant="player" />
+              <HpBar value={playerHp} max={PLAYER_MAX_HP} variant="player" />
               {recoveryHint && (
                 <p className="recovery-hint" role="status">
                   {recoveryHint}
@@ -443,7 +454,7 @@ function App() {
                 </span>
               )}
               <p>{meta.enemy}</p>
-              <HpBar value={enemyHp} max={MAX_HP} variant="enemy" />
+              <HpBar value={enemyHp} max={battleEnemyMaxHp} variant="enemy" />
             </div>
           </div>
 
